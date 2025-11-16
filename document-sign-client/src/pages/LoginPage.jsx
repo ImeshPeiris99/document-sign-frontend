@@ -4,6 +4,8 @@ import api from "../services/api";
 import { ShieldCheck, Calendar, AlertCircle, CheckCircle } from "lucide-react";
 import ReactCalendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import { isVoiceEnabled } from '../components/VoiceAssistant';
+import voiceService from "../services/voiceService";
 
 const LoginPage = () => {
   const { uuid } = useParams();
@@ -17,6 +19,12 @@ const LoginPage = () => {
   const [success, setSuccess] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    // Check if voice assistant is turned ON by user
+    if (!isVoiceEnabled) return;
+    voiceService.speak("Please enter your birthday to continue");
+  }, []);
 
   // 🆕 RESPONSIVE LAYOUT HANDLER
   useEffect(() => {

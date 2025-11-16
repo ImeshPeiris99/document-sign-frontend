@@ -2,6 +2,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SignatureCanvas from "react-signature-canvas";
+import { isVoiceEnabled } from '../components/VoiceAssistant';
+import voiceService from "../services/voiceService";
 
 const SignaturePage = () => {
   const { uuid } = useParams();
@@ -71,6 +73,18 @@ const SignaturePage = () => {
     return () => window.removeEventListener('resize', updateCanvasSize);
   }, [isMobile, isLargeScreen]);
 
+  // 🆕 VOICE GUIDANCE EFFECT - ADD THIS NEW useEffect
+  useEffect(() => {
+    if (!isVoiceEnabled) return;
+    // Speak instructions when patient arrives on signature page
+    voiceService.speakSignatureGuide();
+    
+    // Cleanup - stop voice when leaving page
+    return () => {
+      voiceService.stop();
+    };
+  }, []);
+
   // 🧹 Clear signature
   const clearSignature = () => {
     if (sigCanvas.current) {
@@ -86,8 +100,10 @@ const SignaturePage = () => {
   };
 
   // 💾 Save signature with date & time
+  // 💾 Save signature with date & time
   const saveSignature = () => {
     if (sigCanvas.current && sigCanvas.current.isEmpty()) {
+      voiceService.speak("Please provide your signature before saving."); // ← ADD THIS
       alert("Please provide your signature before saving.");
       return;
     }
@@ -109,10 +125,14 @@ const SignaturePage = () => {
 
       console.log("Signature + Date/Time saved locally ✅");
 
+      // 🆕 ADD VOICE CONFIRMATION
+      voiceService.speakConfirmation("Signature saved"); // ← ADD THIS
+
       // 🔄 Navigate to Submit Page (PDF merge happens there)
       navigate(`/submit/${uuid}`);
     } catch (error) {
       console.error("Error saving signature:", error);
+      voiceService.speak("Error saving signature. Please try again."); // ← ADD THIS
       alert("Failed to save signature. Please try again.");
     }
   };

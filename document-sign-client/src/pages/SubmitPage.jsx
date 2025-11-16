@@ -1,10 +1,13 @@
-// 📄 SubmitPage.jsx - RESPONSIVE VERSION (PRESERVES ALL FUNCTIONALITY)
+// 📄 SubmitPage.jsx - RESPONSIVE VERSION WITH VOICE GUIDANCE & ARROWS
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Download, Share, CheckCircle } from "lucide-react";
 import { PDFDocument, rgb } from "pdf-lib";
 import api from "../services/api";
+import { isVoiceEnabled } from '../components/VoiceAssistant';
+import voiceService from "../services/voiceService"; // 🆕 Voice guidance service
+import GuideArrow from "../components/GuideArrow"; // 🆕 Arrow component for visual guidance
 
 // ✅ React-PDF worker
 import workerSrc from "pdfjs-dist/build/pdf.worker?url";
@@ -20,6 +23,7 @@ const SubmitPage = () => {
   const [scale, setScale] = useState(1.6);
   const [showPopup, setShowPopup] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [currentStep, setCurrentStep] = useState(1); // 🆕 1=review, 2=download, 3=submit
 
   // 🆕 RESPONSIVE LAYOUT HANDLER
   useEffect(() => {
@@ -31,6 +35,34 @@ const SubmitPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 🆕 VOICE GUIDANCE SEQUENCE - GUIDES USER THROUGH THE PROCESS
+  useEffect(() => {
+    // Check if voice assistant is turned ON by user
+    if (!isVoiceEnabled) return;
+    // Wait for PDF to load before starting guidance
+    if (!loading && !error) {
+      const guideUser = async () => {
+        // Step 1: Review document (wait 1 second for PDF to render properly)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        voiceService.speak("Please review your signed document");
+        setCurrentStep(1);
+        await new Promise(resolve => setTimeout(resolve, 6000)); // Wait 6 seconds
+
+        // Step 2: Download guidance
+        voiceService.speak("If you need to download, click the download button");
+        setCurrentStep(2);
+        await new Promise(resolve => setTimeout(resolve, 6000)); // Wait 6 seconds
+
+        // Step 3: Submit guidance
+        voiceService.speak("When you are ready, click submit to complete the process");
+        setCurrentStep(3);
+      };
+
+      guideUser();
+    }
+  }, [loading, error]); // Run when loading/error state changes
+
+  // ✅ ORIGINAL PDF PROCESSING LOGIC (UNCHANGED)
   useEffect(() => {
     const mergeSignatureWithPdf = async () => {
       try {
@@ -107,10 +139,11 @@ const SubmitPage = () => {
     };
   }, [uuid]);
 
-  // 🔍 Zoom handlers
+  // 🔍 Zoom handlers (UNCHANGED)
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3));
   const zoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.6));
 
+  // 📥 Download handler (UNCHANGED)
   const handleDownload = () => {
     if (pdfUrl) {
       const link = document.createElement("a");
@@ -122,10 +155,12 @@ const SubmitPage = () => {
     }
   };
 
+  // 🔗 Share handler (UNCHANGED)
   const handleShare = () => {
     alert("Share functionality will be implemented later.");
   };
 
+  // 📤 Submit handler (UNCHANGED)
   const handleSubmit = async () => {
     try {
       setShowPopup(true);
@@ -401,7 +436,9 @@ const SubmitPage = () => {
           gap: isMobile ? "10px" : "15px",
           alignItems: "center",
         }}>
+          {/* 🆕 DOWNLOAD BUTTON WITH ID FOR ARROW TARGET */}
           <button
+            id="download-button" // 🆕 ID for arrow targeting
             onClick={handleDownload}
             style={{
               backgroundColor: "#FFFFFF",
@@ -445,7 +482,9 @@ const SubmitPage = () => {
             Share
           </button>
 
+          {/* 🆕 SUBMIT BUTTON WITH ID FOR ARROW TARGET */}
           <button
+            id="submit-button" // 🆕 ID for arrow targeting
             onClick={handleSubmit}
             style={{
               backgroundColor: "#1C304A",
@@ -470,11 +509,19 @@ const SubmitPage = () => {
         </div>
       </div>
 
+      {/* 🆕 GUIDANCE ARROWS - SHOW BASED ON CURRENT STEP */}
+      {currentStep === 2 && <GuideArrow targetButtonId="download-button" duration={6000} />}
+      {currentStep === 3 && <GuideArrow targetButtonId="submit-button" duration={6000} />}
+
       {/* Spinner animation */}
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
         }
         body {
           margin: 0;

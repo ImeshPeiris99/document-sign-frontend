@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
 import { PDFDocument, rgb } from "pdf-lib";
+import { isVoiceEnabled } from '../components/VoiceAssistant';
+import voiceService from "../services/voiceService";
 
 // ✅ Import React-PDF and configure local worker
 import { Document, Page, pdfjs } from "react-pdf";
@@ -13,7 +15,6 @@ const PdfViewerPage = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
   const pdfContainerRef = useRef(null);
-  
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -35,6 +36,8 @@ const PdfViewerPage = () => {
   const [activeQuestion, setActiveQuestion] = useState(null);
   const [originalPdfBytes, setOriginalPdfBytes] = useState(null);
   const [pdfUpdateCount, setPdfUpdateCount] = useState(0);
+  const [signatureFields, setSignatureFields] = useState([]);
+  const [aiScanning, setAiScanning] = useState(false);
 
   // 🎯 QUESTION COORDINATES FOR TYPE2 PDFs
   const questionCoordinates = {
@@ -46,6 +49,13 @@ const PdfViewerPage = () => {
     email: { x: 110, y: 421, page: 0 },
     phone: { x: 370, y: 421, page: 0 }
   };
+
+  // 🎯 ADD VOICE FOR PDF VIEWER PAGE
+  useEffect(() => {
+    // Check if voice assistant is turned ON by user
+    if (!isVoiceEnabled) return;
+    voiceService.speak("Please review your document. When ready, click the sign button to proceed with your signature");
+  }, []);
 
   // 🧠 Fetch PDF and detect type
   useEffect(() => {
@@ -208,6 +218,8 @@ const PdfViewerPage = () => {
     }
     navigate(`/sign/${uuid}`);
   };
+
+  
 
   // 🔍 Zoom handlers
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3));
