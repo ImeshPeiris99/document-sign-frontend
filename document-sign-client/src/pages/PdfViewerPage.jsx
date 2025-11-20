@@ -1,4 +1,4 @@
-// 📄 PdfViewerPage.jsx - FIXED SCROLL & MOBILE ISSUES
+// 📄 PdfViewerPage.jsx - UPDATED FOR DOCTORS & PATIENTS
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
@@ -57,7 +57,7 @@ const PdfViewerPage = () => {
     voiceService.speak("Please review your document. When ready, click the sign button to proceed with your signature");
   }, []);
 
-  // 🧠 Fetch PDF and detect type
+  // 🧠 Fetch PDF and detect type - UPDATED FOR DOCTORS & PATIENTS
   useEffect(() => {
     const fetchPdf = async () => {
       try {
@@ -68,9 +68,22 @@ const PdfViewerPage = () => {
           localStorage.setItem("currentPdfBase64", response.data.pdfBase64);
           localStorage.setItem("pdfTypeName", response.data.pdfName);
 
-          // 🆕 DETECT PDF TYPE
-          const isType2 = response.data.pdfName?.toLowerCase().includes('type2');
-          setPdfType(isType2 ? 'type2' : 'type1');
+          // 🆕 DETECT USER TYPE (DOCTOR OR PATIENT)
+          const isDoctor = response.data.userType === 'doctor';
+          const userType = isDoctor ? 'doctor' : 'patient';
+          localStorage.setItem("userType", userType); // 🆕 Store user type
+
+          // 🆕 DETECT PDF TYPE BASED ON USER TYPE
+          if (isDoctor) {
+            // Doctors get simple PDF view (no form filling)
+            setPdfType('doctor');
+            console.log("👨‍⚕️ Doctor PDF loaded");
+          } else {
+            // Patients can have Type1 or Type2 PDFs
+            const isType2 = response.data.pdfName?.toLowerCase().includes('type2');
+            setPdfType(isType2 ? 'type2' : 'type1');
+            console.log(`👤 Patient PDF loaded: ${isType2 ? 'Type2' : 'Type1'}`);
+          }
 
           // Convert Base64 to Blob → URL for preview
           const byteCharacters = atob(response.data.pdfBase64);
@@ -87,12 +100,16 @@ const PdfViewerPage = () => {
           const url = URL.createObjectURL(blob);
           setPdfUrl(url);
           
-          // 🆕 For type2, also set answered PDF URL initially
-          if (isType2) {
+          // 🆕 For type2 patients, also set answered PDF URL initially
+          // Doctors and Type1 patients get simple PDF view
+          if (pdfType === 'type2') {
+            setAnsweredPdfUrl(url);
+          } else if (isDoctor) {
+            // Doctors always get simple PDF view (no forms)
             setAnsweredPdfUrl(url);
           }
         } else {
-          setError("PDF not found for this patient.");
+          setError("PDF not found for this user.");
         }
       } catch (err) {
         console.error("Error fetching PDF:", err);
@@ -210,23 +227,28 @@ const PdfViewerPage = () => {
     scrollToAnswerPosition(field);
   };
 
-  // ✍️ Navigate to signature page
+  // ✍️ Navigate to signature page - UPDATED FOR DOCTORS & PATIENTS
   const handleSignClick = () => {
-    if (pdfType === 'type2') {
-      // For type2, save answers to localStorage for signature page
+    const userType = localStorage.getItem("userType") || "patient";
+    
+    // 🆕 Only patients with Type2 PDFs need to save answers
+    if (pdfType === 'type2' && userType === 'patient') {
       localStorage.setItem("patientAnswers", JSON.stringify(answers));
     }
+    
+    // 🆕 For doctors, no form data to save
+    if (userType === 'doctor') {
+      console.log("👨‍⚕️ Doctor proceeding to signature");
+    }
+    
     navigate(`/sign/${uuid}`);
   };
-
-  
 
   // 🔍 Zoom handlers
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3));
   const zoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.6));
 
   // 🆕 RENDER QUESTIONS FORM (Right side for type2) - FIXED SCROLL
-  // 🆕 RENDER QUESTIONS FORM (Right side for type2) - FIXED MOBILE SCROLL
   const renderQuestionsForm = () => {
     const isMobile = window.innerWidth < 768;
     
@@ -427,17 +449,30 @@ const PdfViewerPage = () => {
 
   return (
     <div style={containerStyle}>
-      {/* 🔹 Header */}
+      {/* 🔹 Header - UPDATED FOR DOCTORS & PATIENTS */}
       <div style={headerStyle}>
-        Document for signature {pdfType === 'type2' && '- Please fill in your information'}
+        Document for signature 
+        {pdfType === 'type2' && ' - Please fill in your information'}
+        {pdfType === 'doctor' && ' - Doctor Review'} {/* 🆕 Doctor header */}
       </div>
 
       {/* 🔹 Main Container */}
       <div style={mainContainerStyle}>
         <div style={cardStyle}>
-          Informed Financial Consent Form
+          {/* 🆕 UPDATED TITLE FOR DOCTORS & PATIENTS */}
+          {pdfType === 'doctor' ? 'Medical Document Review' : 'Informed Financial Consent Form'}
+          
+          {/* 🆕 SHOW USER TYPE BADGE */}
+          <div style={{
+            fontSize: '14px',
+            color: '#666',
+            fontWeight: 'normal',
+            marginTop: '5px'
+          }}>
+            {pdfType === 'doctor' ? '👨‍⚕️ Doctor Portal' : '👤 Patient Portal'}
+          </div>
 
-          {/* PDF Container - DIFFERENT FOR TYPE1 vs TYPE2 */}
+          {/* PDF Container - DIFFERENT FOR TYPE1 vs TYPE2 vs DOCTOR */}
           <div style={pdfContainerStyle}>
             {loading && <div style={loadingStyle}>Loading document...</div>}
             {error && !loading && <div style={errorStyle}>{error}</div>}
@@ -445,10 +480,10 @@ const PdfViewerPage = () => {
             {!loading && !error && (
               <>
                 {pdfType === 'type2' ? (
-                  // 🆕 SPLIT SCREEN FOR TYPE2
+                  // 🆕 SPLIT SCREEN FOR TYPE2 PATIENTS
                   renderSplitScreen()
                 ) : (
-                  // ✅ REGULAR PDF VIEWER FOR TYPE1
+                  // ✅ REGULAR PDF VIEWER FOR TYPE1 PATIENTS AND DOCTORS
                   <>
                     <div style={{ flex: 1, overflow: "auto" }}>
                       {pdfUrl && (

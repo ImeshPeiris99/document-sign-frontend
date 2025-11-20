@@ -115,10 +115,11 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error("Login failed:", err);
+      console.error("Full error details:", err.response?.data);
       setError("Your Date of Birth is Incorrect");
     } finally {
       setLoading(false);
-    }
+    }    
   };
 
   const getDaysInMonth = (month, year) => {

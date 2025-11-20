@@ -1,4 +1,4 @@
-// VoiceAssistant.jsx - PERSISTENT VOICE STATE ACROSS ALL PAGES
+// VoiceAssistant.jsx - FIXED TO ONLY SPEAK WHEN CLICKED
 import React, { useState, useEffect } from 'react';
 import voiceService from '../services/voiceService';
 
@@ -8,50 +8,54 @@ export const setVoiceEnabled = (enabled) => {
   isVoiceEnabled = enabled;
   // 🎯 SAVE TO LOCALSTORAGE SO IT PERSISTS ACROSS PAGES
   localStorage.setItem('voiceAssistantEnabled', enabled.toString());
+  console.log("🔊 Voice state saved to localStorage:", enabled);
 };
 
 const VoiceAssistant = () => {
   // 🎯 LOAD VOICE STATE FROM LOCALSTORAGE ON COMPONENT MOUNT
   const [isVoiceOn, setIsVoiceOn] = useState(() => {
     const savedState = localStorage.getItem('voiceAssistantEnabled');
-    return savedState === 'true'; // Convert string to boolean
+    const initialState = savedState === 'true';
+    console.log("🔊 Initial voice state from localStorage:", initialState);
+    return initialState;
   });
 
   // 🎯 SYNC LOCAL STATE WITH GLOBAL STATE ON MOUNT AND CHANGES
   useEffect(() => {
+    console.log("🔊 Syncing global voice state to:", isVoiceOn);
     // Set global state to match local state
     setVoiceEnabled(isVoiceOn);
-    
-    // If voice is ON, speak instruction for current page
-    if (isVoiceOn) {
-      speakPageInstruction();
-    }
   }, [isVoiceOn]);
 
-  // 🎯 TOGGLE VOICE ON/OFF
+  // 🎯 TOGGLE VOICE ON/OFF - ONLY SPEAK WHEN USER CLICKS TO TURN ON
   const toggleVoice = () => {
     const newState = !isVoiceOn;
+    console.log("🔊 Toggling voice to:", newState);
     setIsVoiceOn(newState);
     
-    if (!newState) {
-      // If turning OFF, stop any current speech
+    // 🎯 ONLY SPEAK WHEN USER TURNS VOICE ON (not when turning off)
+    if (newState) {
+      console.log("🔊 Voice turned ON - speaking page instruction");
+      speakPageInstruction();
+    } else {
+      console.log("🔊 Voice turned OFF - stopping any speech");
       voiceService.stop();
     }
-    // If turning ON, the useEffect above will handle speaking
   };
 
   // 🎯 SPEAK INSTRUCTION FOR CURRENT PAGE
   const speakPageInstruction = () => {
-    if (!isVoiceOn) return; // Safety check
-    
     const currentPath = window.location.pathname;
+    console.log("🔊 Speaking instruction for path:", currentPath);
     
-    if (currentPath.includes('/signature')) {
+    if (currentPath.includes('/signature') || currentPath.includes('/sign/')) {
       voiceService.speakSignatureGuide();
     } else if (currentPath.includes('/submit')) {
       voiceService.speak("Please review your signed document. You can download it or submit when ready.");
     } else if (currentPath.includes('/login')) {
       voiceService.speak("Welcome. Please enter your birthday to continue.");
+    } else if (currentPath.includes('/doctor-login')) {
+      voiceService.speak("Please enter your PIN to continue."); // 🆕 ADDED DOCTOR LOGIN
     } else if (currentPath.includes('/pdf')) {
       voiceService.speak("Please review your document. When ready, click the sign button to proceed.");
     }

@@ -99,24 +99,22 @@ const SignaturePage = () => {
     setShowColorPicker(false);
   };
 
-  // 💾 Save signature with date & time
-  // 💾 Save signature with date & time
+  // 💾 Save signature with date & time (SILENT VERSION)
   const saveSignature = () => {
     if (sigCanvas.current && sigCanvas.current.isEmpty()) {
-      voiceService.speak("Please provide your signature before saving."); // ← ADD THIS
+      voiceService.speak("Please provide your signature before saving.");
       alert("Please provide your signature before saving.");
       return;
     }
 
     try {
-      // ✅ Get signature as Base64 PNG (no trim to avoid errors)
+      // ✅ Get signature as Base64 PNG
       const signatureData = sigCanvas.current.getCanvas().toDataURL("image/png");
 
       // ✅ Generate formatted date & time
       const now = new Date();
-      const date = now.toLocaleDateString("en-CA"); // YYYY-MM-DD
+      const date = now.toLocaleDateString("en-CA");
       const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
       const dateTimeText = `Date: ${date}\nTime: ${time}`;
 
       // 🧠 Save both to localStorage
@@ -125,14 +123,12 @@ const SignaturePage = () => {
 
       console.log("Signature + Date/Time saved locally ✅");
 
-      // 🆕 ADD VOICE CONFIRMATION
-      voiceService.speakConfirmation("Signature saved"); // ← ADD THIS
-
-      // 🔄 Navigate to Submit Page (PDF merge happens there)
+      // 🎯 SILENT NAVIGATION - No voice confirmation
       navigate(`/submit/${uuid}`);
+      
     } catch (error) {
       console.error("Error saving signature:", error);
-      voiceService.speak("Error saving signature. Please try again."); // ← ADD THIS
+      voiceService.speak("Error saving signature. Please try again.");
       alert("Failed to save signature. Please try again.");
     }
   };
